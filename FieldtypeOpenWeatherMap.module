@@ -146,7 +146,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
 
         //If value is not fresh, solicit OpenWeatherMap for new data, save and return it.
         $weathertime = strtotime($value['timestamp']);
-        $freshTime = date('U');// - 60*60*($field->cachehours);
+        $freshTime = date('U') - 60*60*($field->cachehours);
         if ($weathertime < $freshTime)
         {
             //die('Let’s look at what’s happening here: ' . $weathertime . ' — ' . $freshTime);
