@@ -413,7 +413,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         $f->attr('name', 'units');
         $f->set('value', ($field->units) ? $field->units : '');
         //$f->set('optionColumns', 3);
-        $f->addOptions(Array('metric' => 'Metric (temperature in °C)', 'imperial' => 'Imperial (temperature in °F)', '' => 'Internal (temperature in °K)'));
+        $f->addOptions(Array('metric' => 'Metric (temperature in °C)', 'imperial' => 'Imperial (temperature in °F)', '' => 'Internal (temperature in K)'));
         $f->label = $this->_('Units Format');
         $f->description = $this->_("This sets the requested format. It is not a conversion within the module. Be aware that changes do not invalidate the cached responses in the database, so they may take some time to show up.");
         $inputfields->add($f);
