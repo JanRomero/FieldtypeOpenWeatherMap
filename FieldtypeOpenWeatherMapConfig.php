@@ -13,7 +13,7 @@ class FieldtypeOpenWeatherMapConfig extends ModuleConfig
 
         $f = $this->modules->get('InputfieldText');
         $f->attr('name', 'APIKey');
-        $f->set('value', $field->APIKey);
+        $f->set('value', $this->APIKey);
         $f->label = $this->_('API Key');
         $f->description = $this->_("Your API key for the OpenWeatherMap service.");
         $f->attr('icon', 'key');
