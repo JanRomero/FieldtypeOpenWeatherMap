@@ -152,13 +152,21 @@ class FieldtypeOpenWeatherMap extends Fieldtype
             //die('Let’s look at what’s happening here: ' . $weathertime . ' — ' . $freshTime);
             $out = $this->fetchWeather($page, $field, $value['city_id']);
             if ($out === null) {
-                //Everything sucks
+                //city_id must be invalid. Everything sucks.
                 return null;
             }
 
-            $out->needsSave = true;
             //$out may not be complete, but should have city_id in any case.
-            return $out;
+            //Only return and store $out if it’s fine:
+            if ($out->json !== null) {
+                $out->needsSave = true;
+                return $out;
+            }
+            //Otherwise, we might want to return null, or just continue below and
+            //serve the outdated database data and try again on the next request.
+            //I’m opting for the latter, so let’s check if we even have cached data:
+            if (!$value['data'])
+                return null;
         }
 
 
@@ -168,7 +176,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         $out->city_id = $value['city_id'];
         $out->timestamp = $value['timestamp'];
 
-        $out->json = $value['json'];
+        $out->json = $value['data'];
 
         return $out;
     }
@@ -176,7 +184,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
     public function ___sleepValue(Page $page, Field $field, $value)
     {
         if($value instanceof WeatherData) {
-            return Array('json' => "$value->json",
+            return Array('data' => "$value->json",
                         'timestamp' => $value->timestamp,
                         'city_id' => "$value->city_id");
         }
@@ -185,7 +193,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         //So if that’s what we have here, reset the stored data and save the new city_id.
         $city_id = (int)$value;
         if ($city_id > 0) {
-            return Array('json' => '',
+            return Array('data' => '',
                         'timestamp' => '0000-00-00 00:00:00',
                         'city_id' => "$city_id");
         }
@@ -246,7 +254,8 @@ class FieldtypeOpenWeatherMap extends Fieldtype
 
         $schema['city_id'] = "int(10) UNSIGNED NOT NULL DEFAULT 0";
         $schema['timestamp'] = "timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'";
-        $schema['json'] = "text NOT NULL";
+        $schema['data'] = "text NOT NULL";
+        unset($schema['keys']['data']); //Parent sets a data key, but our data field won’t work as one
         $schema['keys']['citytime'] = "KEY citytime (city_id, timestamp)";
 
         return $schema;
@@ -387,7 +396,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         $f = $this->modules->get('InputfieldInteger');
         $f->attr('name', 'cachehours');
         $f->attr('required', true);
-        $f->set('value', ($field->cachehours !== null) ? $field->cachehours : PHP_INT_MAX);
+        $f->set('value', ($field->cachehours !== null) ? $field->cachehours : 3);
         $f->set('min', 0);
         $f->set('max', PHP_INT_MAX); //ProcessWire won’t set the HTML5 min attribute if max is not defined.
         $f->set('inputType', 'number');
