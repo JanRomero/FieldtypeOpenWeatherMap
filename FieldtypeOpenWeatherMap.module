@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
 
 /**
 * Fieldtype Open Weather Map
@@ -92,7 +92,7 @@ class WeatherData extends WireData
     *
     */
     public function renderIcon() {
-        $m = wire('modules')->get('FieldtypeOpenWeatherMap');
+        $m = $this->wire('modules')->get('FieldtypeOpenWeatherMap');
         $out = $m->get($this->iconcode);
 
         //If there’s no markup for this icon code, perhaps
@@ -128,11 +128,13 @@ class FieldtypeOpenWeatherMap extends Fieldtype
     {
         return array(
                     'title' => __('Weather from OpenWeatherMap.org'),
-                    'version' => '0.6.0',
+                    'version' => '0.7.0',
+                    'requires' => ['PHP>=5.4',
+                                   'ProcessWire>=3.0.0'],
                     'summary' => __('Fetches and stores current weather data from OpenWeatherMap.org and helps you manage icon markup.'),
                     'author' => 'Jan Romero',
                     'icon' => 'cloud',
-                    //'href' => 'http://SCHMOPSCHMOP',
+                    'href' => 'https://github.com/JanRomero/FieldtypeOpenWeatherMap',
                     );
     }
 
@@ -149,7 +151,6 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         $freshTime = date('U') - 60*60*($field->cachehours);
         if ($weathertime < $freshTime)
         {
-            //die('Let’s look at what’s happening here: ' . $weathertime . ' — ' . $freshTime);
             $out = $this->fetchWeather($page, $field, $value['city_id']);
             if ($out === null) {
                 //city_id must be invalid. Everything sucks.
@@ -230,7 +231,7 @@ class FieldtypeOpenWeatherMap extends Fieldtype
 
     public function getInputfield(Page $page, Field $field)
     {
-        $inputfield = wire('modules')->get('InputfieldText');
+        $inputfield = $this->wire('modules')->get('InputfieldText');
         return $inputfield;
     }
 
@@ -273,11 +274,6 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         if (!($pages instanceof PageArray))
             return null;
 
-        if(!ini_get('allow_url_fopen')) {
-            $this->error($this->_('Fetching weather is not supported by this server!'));
-            //Return the WeatherData object with only city_id filled, so at least we have that
-            return null;
-        }
 
         $pages_by_city_id = array();
 
@@ -290,19 +286,17 @@ class FieldtypeOpenWeatherMap extends Fieldtype
 
         $url .= implode(',', array_keys($pages_by_city_id));
 
-        $field = wire('fields')->get($fieldname);
+        $field = $this->wire('fields')->get($fieldname);
         $url .= ($field->language) ? '&lang=' . urlencode($field->language) : '';
         $url .= ($field->units) ? '&units=' . urlencode($field->units) : '';
 
-        $context = null;
-        if ($this->APIKey) {
-            $context = array('http' => array('header'=>"x-api-key:{$this->APIKey}"));
-            $context = stream_context_create($context);
-        }
 
 
-
-        $rawJson = file_get_contents($url, false, $context);
+        //We send the API key in the request header as specified here http://www.openweathermap.org/appid
+        //OpenWeatherMap also allows sending it in the GET parameter “APPID”
+        $http = new WireHttp();
+        $http->setHeader('x-api-key', $this->APIKey);
+        $rawJson = $http->get($url);
 
 
 
@@ -342,29 +336,19 @@ class FieldtypeOpenWeatherMap extends Fieldtype
         $out = new WeatherData();
         $out->city_id = (int)$city_id;
 
-        if(!ini_get('allow_url_fopen')) {
-            $this->error($this->_('Fetching weather is not supported by this server!'));
-            //Return the WeatherData object with only city_id filled, so at least we have that
-            return $out;
-        }
-
-
-        //We send the API key in the request header as specified here http://www.openweathermap.org/appid
-        //OpenWeatherMap also allows sending it in the GET parameter “APPID”
-        $context = null;
-        if ($this->APIKey) {
-            $context = array('http' => array('header'=>"x-api-key:{$this->APIKey}"));
-            $context = stream_context_create($context);
-        }
 
         $get_id = 'id=' . urlencode($city_id);
         $get_lang = ($field->language) ? '&lang=' . urlencode($field->language) : '';
         $get_units = ($field->units) ? '&units=' . urlencode($field->units) : '';
-        $url = "http://api.openweathermap.org/data/2.5/weather?{$get_id}{$get_lang}{$get_units}";
+        $url = "https://api.openweathermap.org/data/2.5/weather?{$get_id}{$get_lang}{$get_units}";
 
 
 
-        $rawJson = file_get_contents($url, false, $context);
+        //We send the API key in the request header as specified here http://www.openweathermap.org/appid
+        //OpenWeatherMap also allows sending it in the GET parameter “APPID”
+        $http = new WireHttp();
+        $http->setHeader('x-api-key', $this->APIKey);
+        $rawJson = $http->get($url);
 
 
 
@@ -386,7 +370,6 @@ class FieldtypeOpenWeatherMap extends Fieldtype
 
         return $out;
     }
-
 
     public function ___getConfigInputfields(Field $field)
     {

@@ -1,4 +1,5 @@
-<?php
+<?php namespace ProcessWire;
+
 class FieldtypeOpenWeatherMapConfig extends ModuleConfig
 {
     public function getDefaults()
